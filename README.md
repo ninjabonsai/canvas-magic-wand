@@ -6,7 +6,7 @@ npm install canvas-magic-wand
 ```
 Then use it like this...
 ```javascript
-import CanvasMagicWand from './canvas-magic-wand';
+import CanvasMagicWand from 'canvas-magic-wand';
 
 const img = document.body.querySelector( 'img' );
 img.addEventListener( 'load', () => {
