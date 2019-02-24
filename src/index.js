@@ -34,15 +34,63 @@ function setImageData( imageData, targetColor, newColorSelected, newColorUnselec
     }
 }
 
+// the following is from https://stackoverflow.com/a/5624139/2630316
+function hexToRgb( hex ) {
+    var shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    hex = hex.replace( shorthandRegex, function( m, r, g, b ) {
+        return r + r + g + g + b + b;
+    } );
+
+    var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec( hex );
+    return result ? {
+        r: parseInt( result[1], 16 ),
+        g: parseInt( result[2], 16 ),
+        b: parseInt( result[3], 16 )
+    } : null;
+}
+
+function loadImage ( url ) {
+    return new Promise( ( resolve, reject ) => {
+        const img = new Image();
+        img.src = url;
+        img.addEventListener( 'load', () => resolve( img ) );
+        img.addEventListener( 'error', () => {
+            reject( new Error( `Failed to load image ${ url }` ) );
+        } );
+    } );
+}
+
 const CanvasMagicWand = {
-    knockoutColor (
-        img,
-        targetColor = { r: 255, g: 255, b: 255 },
-        tolerance = 10,
-        edgeBlur = 4,
-        edgeBrightness = 2,
-        edgeContrast = 6
-    ) {
+    async knockoutColor ( config = {} ) {
+        let {
+            img = null,
+        } = config;
+        
+        const {
+            src = null,
+            targetColor = '#fff',
+            replacementColor = '#ffffff00',
+            tolerance = 10,
+            edgeBlur = 4,
+            edgeBrightness = 2,
+            edgeContrast = 6,
+            debugMode = false,
+        } = config;
+        
+        if ( src !== null || ( img !== null && img.naturalWidth === 0 ) ) {
+            if ( img === null && typeof src !== 'string' ) {
+                throw Error( 'src must be a string' );
+            }
+            
+            try {
+                img = await loadImage( src || img.src );
+            } catch ( err ) {
+                console.error( err );
+            }
+        } else if ( !( img instanceof Image ) ) {
+            throw Error( 'must provide a HTMLImageElement or a String representing the image\'s src attribute' );
+        }
+        
         const w = img.naturalWidth;
         const h = img.naturalHeight;
         
@@ -58,7 +106,7 @@ const CanvasMagicWand = {
 
         let imageData = ctx.getImageData( 0, 0, w, h );
 
-        setImageData( imageData, targetColor, newColorSelected, newColorUnselected, tolerance );
+        setImageData( imageData, hexToRgb( targetColor ), newColorSelected, newColorUnselected, tolerance );
         ctx.putImageData( imageData, 0, 0 );
 
         const canvas2 = document.createElement( 'canvas' );
@@ -85,8 +133,19 @@ const CanvasMagicWand = {
         ctx.globalCompositeOperation = 'source-in';
         ctx.drawImage( img, 0, 0 );
         
-        return canvasDisplay;
-    }
+        const canvasReplacementColor = document.createElement( 'canvas' );
+        canvasReplacementColor.width = w;
+        canvasReplacementColor.height = h;
+        ctx = canvasReplacementColor.getContext( '2d' );
+        ctx.fillStyle = debugMode ? '#fff' : replacementColor;
+        ctx.fillRect( 0, 0, w, h );
+        ctx.drawImage( debugMode ? canvas2 : canvasDisplay, 0, 0 );
+        
+        img = new Image();
+        img.src = canvasReplacementColor.toDataURL();
+        
+        return img;
+    },
 };
 
 export default CanvasMagicWand;
