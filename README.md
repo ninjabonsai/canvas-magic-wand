@@ -4,7 +4,7 @@ set a color within an image to be transparent
 ```
 npm install canvas-magic-wand
 ```
-Then use it like this...
+Then use it like this... ( commented out lines show defaults )
 ```javascript
 import CanvasMagicWand from 'canvas-magic-wand';
 
